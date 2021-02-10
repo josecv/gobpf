@@ -387,6 +387,24 @@ func (bpf *Module) AttachUprobe(name, symbol string, fd, pid int) error {
 	return bpf.attachUProbe(evName, BPF_PROBE_ENTRY, path, addr, fd, pid)
 }
 
+// AttachUprobeByAddr attaches a uprobe fd to the symbol in the library or binary 'name'
+// that is located at the 'addr' given.
+// The 'name' argument can be given as either a full library path (/usr/lib/..),
+// a library without the lib prefix, or as a binary with full path (/bin/bash)
+// A pid can be given to attach to, or -1 to attach to all processes
+//
+// Presently attempts to trace processes running in a different namespace
+// to the tracer will fail due to limitations around namespace-switching
+// in multi-threaded programs (such as Go programs)
+func (bpf *Module) AttachUprobeByAddr(name string, addr uint64, fd, pid int) error {
+	path, addr, err := resolveSymbolPath(name, "", addr, pid)
+	if err != nil {
+		return err
+	}
+	evName := fmt.Sprintf("p_%s_0x%x", uprobeRegexp.ReplaceAllString(path, "_"), addr)
+	return bpf.attachUProbe(evName, BPF_PROBE_ENTRY, path, addr, fd, pid)
+}
+
 // AttachMatchingUprobes attaches a uprobe fd to all symbols in the library or binary
 // 'name' that match a given pattern.
 // The 'name' argument can be given as either a full library path (/usr/lib/..),
